@@ -1,0 +1,44 @@
+# Crie a imagem do aplicativo
+FROM python:3.11
+
+# Crie um diretório para o usuário do aplicativo
+RUN mkdir -p /home/app
+
+# Variáveis Padrões
+ENV PYTHONFAULTHANDLER=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONHASHSEED=random \
+    PIP_NO_CACHE_DIR=off \
+    PIP_DISABLE_PIP_VERSION_CHECK=on \
+    PIP_DEFAULT_TIMEOUT=10000 \
+    POETRY_NO_INTERACTION=1 \
+    POETRY_CACHE_DIR=/tmp/poetry_cache \
+    POETRY_VIRTUALENVS_IN_PROJECT=0 \
+    POETRY_VIRTUALENVS_CREATE=0
+
+# Poetry Instalação
+ENV POETRY_VERSION=1.7.1
+RUN pip install "poetry==$POETRY_VERSION"
+
+# Crie o usuário do aplicativo
+RUN groupadd app && useradd -g app app
+
+# Crie o diretório inicial
+ENV APP_HOME=/home/app/api
+RUN mkdir -p $APP_HOME
+WORKDIR $APP_HOME
+
+# Instalar
+COPY . $APP_HOME
+
+# Instalar as dependências usando Poetry
+RUN poetry install --no-root && rm -rf $POETRY_CACHE_DIR
+
+# Garantir que o usuário app possa acessar os arquivos instalados
+RUN chown -R app:app $APP_HOME
+
+USER app
+
+# Instalar o uvicorn e iniciar o aplicativo
+CMD ["uvicorn", "backend.app:create_app", "--factory", "--host=0.0.0.0", "--port=8000", "--reload"]
